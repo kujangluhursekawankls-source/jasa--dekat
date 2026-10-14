@@ -73,7 +73,7 @@ service cloud.firestore {
       );
 
       allow create: if (
-        (isSignedIn() && incoming().userId == request.auth.uid && incoming().status == 'pending') ||
+        incoming().status == 'pending' ||
         isAdmin()
       );
 

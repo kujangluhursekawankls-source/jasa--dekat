@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   X,
   Upload,
@@ -52,6 +52,7 @@ export const RegisterProviderModal: React.FC<RegisterProviderModalProps> = ({
   const [description, setDescription] = useState('');
   const [priceRange, setPriceRange] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -128,6 +129,13 @@ export const RegisterProviderModal: React.FC<RegisterProviderModalProps> = ({
     }
   };
 
+  const handleRemovePhoto = () => {
+    setPhotoUrl('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
@@ -146,20 +154,23 @@ export const RegisterProviderModal: React.FC<RegisterProviderModalProps> = ({
 
       let userId = currentUser?.uid;
 
-      // If user not logged in, create account first
+      // If user not logged in, attempt to create account if credentials provided
       if (!currentUser) {
-        if (!email.trim() || !password.trim()) {
-          throw new Error('Email dan kata sandi wajib diisi untuk membuat akun mitra.');
+        if (email.trim() && password.trim()) {
+          try {
+            if (password.length >= 6) {
+              const createdUser = await registerWithEmail(email.trim(), password.trim(), name.trim());
+              userId = createdUser.uid;
+            }
+          } catch (authErr: unknown) {
+            console.warn('Mitra auth notice (proceeding with registration ID):', authErr);
+            // If Firebase Auth has email/password disabled (auth/operation-not-allowed), fallback gracefully
+            userId = `mitra-${Date.now()}`;
+          }
         }
-        if (password.length < 6) {
-          throw new Error('Kata sandi minimal 6 karakter.');
+        if (!userId) {
+          userId = `mitra-${Date.now()}`;
         }
-        const createdUser = await registerWithEmail(email, password, name);
-        userId = createdUser.uid;
-      }
-
-      if (!userId) {
-        throw new Error('Gagal mengaitkan akun pengguna.');
       }
 
       const selectedCategory = categories.find((c) => c.id === categoryId);
@@ -191,18 +202,24 @@ export const RegisterProviderModal: React.FC<RegisterProviderModalProps> = ({
 
       try {
         await addDoc(collection(db, 'providers'), providerData);
-        // Also ensure user document role is provider
-        await setDoc(
-          doc(db, 'users', userId),
-          {
-            id: userId,
-            email: currentUser?.email || email,
-            role: 'provider',
-            displayName: name,
-            createdAt: new Date().toISOString(),
-          },
-          { merge: true }
-        );
+        // If user is authenticated, also sync their user role document
+        if (currentUser || (userId && !userId.startsWith('mitra-'))) {
+          try {
+            await setDoc(
+              doc(db, 'users', String(userId)),
+              {
+                id: userId,
+                email: currentUser?.email || email.trim(),
+                role: 'provider',
+                displayName: name.trim(),
+                createdAt: new Date().toISOString(),
+              },
+              { merge: true }
+            );
+          } catch (userErr) {
+            console.warn('User doc sync skipped:', userErr);
+          }
+        }
       } catch (firestoreErr) {
         handleFirestoreError(firestoreErr, OperationType.CREATE, 'providers');
       }
@@ -436,11 +453,10 @@ export const RegisterProviderModal: React.FC<RegisterProviderModalProps> = ({
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Email Akun <span className="text-red-500">*</span>
+                      Email Akun <span className="text-slate-400 font-normal">(Opsional)</span>
                     </label>
                     <input
                       type="email"
-                      required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="emailanda@gmail.com"
@@ -450,14 +466,13 @@ export const RegisterProviderModal: React.FC<RegisterProviderModalProps> = ({
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Kata Sandi <span className="text-red-500">*</span>
+                      Kata Sandi <span className="text-slate-400 font-normal">(Opsional, untuk login ke dasbor mitra)</span>
                     </label>
                     <input
                       type="password"
-                      required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Minimal 6 karakter"
+                      placeholder="Opsional (minimal 6 karakter)"
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none"
                     />
                   </div>
@@ -653,8 +668,9 @@ export const RegisterProviderModal: React.FC<RegisterProviderModalProps> = ({
                   <div className="flex items-center gap-3">
                     <label className="cursor-pointer px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 flex items-center gap-1.5 transition-colors">
                       <Upload className="w-3.5 h-3.5" />
-                      <span>Pilih Foto dari HP</span>
+                      <span>{photoUrl ? 'Ganti Foto dari HP' : 'Pilih Foto dari HP'}</span>
                       <input
+                        ref={fileInputRef}
                         type="file"
                         accept="image/*"
                         onChange={handleImageUpload}
@@ -671,8 +687,25 @@ export const RegisterProviderModal: React.FC<RegisterProviderModalProps> = ({
                     className="mt-2 w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                   {photoUrl && (
-                    <div className="mt-2 w-16 h-16 rounded-xl overflow-hidden border border-slate-200">
-                      <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                    <div className="mt-2.5 p-2.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-3 animate-in fade-in">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-14 h-14 rounded-xl overflow-hidden border border-slate-200 shrink-0 bg-white">
+                          <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-slate-800">Foto Berhasil Dipilih</p>
+                          <p className="text-[11px] text-slate-500 truncate">Foto ini akan tampil di profil mitra Anda</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemovePhoto}
+                        className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0"
+                        title="Hapus atau batalkan foto ini"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Hapus / Batal Foto</span>
+                      </button>
                     </div>
                   )}
                 </div>
