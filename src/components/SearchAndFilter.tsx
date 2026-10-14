@@ -38,10 +38,7 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
   onClearLocation,
 }) => {
   const currentRegion = INDONESIAN_REGIONS.find((r) => r.province === filters.province);
-  const currentCity = filters.city
-    ? currentRegion?.cities.find((c) => c.name === filters.city) ||
-      INDONESIAN_REGIONS.flatMap((r) => r.cities).find((c) => c.name === filters.city)
-    : undefined;
+  const currentCity = currentRegion?.cities.find((c) => c.name === filters.city);
 
   const handleProvinceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     onFilterChange({
@@ -53,28 +50,9 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
   };
 
   const handleCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedCity = e.target.value;
-    if (!selectedCity) {
-      onFilterChange({
-        ...filters,
-        city: '',
-        district: '',
-      });
-      return;
-    }
-
-    let prov = filters.province;
-    if (!prov) {
-      const foundReg = INDONESIAN_REGIONS.find((r) =>
-        r.cities.some((c) => c.name === selectedCity)
-      );
-      if (foundReg) prov = foundReg.province;
-    }
-
     onFilterChange({
       ...filters,
-      province: prov,
-      city: selectedCity,
+      city: e.target.value,
       district: '',
     });
   };
@@ -164,24 +142,8 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
       )}
 
       {locationError && (
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 flex items-start justify-between gap-3 shadow-2xs">
-          <div className="flex items-start gap-2.5">
-            <span className="text-base leading-none">📍</span>
-            <div>
-              <p className="font-semibold text-amber-900">{locationError}</p>
-              <p className="text-[11px] text-amber-700 mt-0.5">
-                Jangan khawatir, Anda dapat langsung memilih Provinsi, Kota, dan Kecamatan dari filter dropdown di bawah ini.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClearLocation}
-            className="text-amber-500 hover:text-amber-800 p-1 rounded-lg hover:bg-amber-100 transition-colors"
-            title="Tutup pesan"
-          >
-            <X className="w-4 h-4" />
-          </button>
+        <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center justify-between">
+          <span>{locationError}</span>
         </div>
       )}
 
@@ -246,26 +208,17 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
             <select
               value={filters.city}
               onChange={handleCityChange}
-              className="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none appearance-none"
+              disabled={!filters.province}
+              className={`w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none appearance-none ${
+                !filters.province ? 'opacity-60 cursor-not-allowed' : ''
+              }`}
             >
-              <option value="">
-                {filters.province ? `Semua Kota di ${filters.province}` : 'Semua Kota / Kabupaten'}
-              </option>
-              {filters.province
-                ? currentRegion?.cities.map((c) => (
-                    <option key={c.name} value={c.name}>
-                      {c.name}
-                    </option>
-                  ))
-                : INDONESIAN_REGIONS.map((reg) => (
-                    <optgroup key={reg.id} label={reg.province}>
-                      {reg.cities.map((c) => (
-                        <option key={c.name} value={c.name}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
+              <option value="">{filters.province ? 'Semua Kota / Kab' : 'Pilih Provinsi Dulu'}</option>
+              {currentRegion?.cities.map((c) => (
+                <option key={c.name} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
               <MapPin className="w-3.5 h-3.5" />
@@ -288,9 +241,11 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
               }`}
             >
               <option value="">
-                {!filters.city
+                {!filters.province
+                  ? 'Pilih Provinsi & Kota Dahulu'
+                  : !filters.city
                   ? 'Pilih Kota Terlebih Dahulu'
-                  : `Semua Kecamatan di ${filters.city} (${currentCity?.districts.length || 0})`}
+                  : 'Semua Kecamatan'}
               </option>
               {currentCity?.districts
                 .slice()
