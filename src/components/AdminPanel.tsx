@@ -25,7 +25,7 @@ import {
   Phone,
   Globe,
 } from 'lucide-react';
-import { INDONESIAN_REGIONS, INITIAL_CATEGORIES, getDistrictsForCity } from '../data/initialData';
+import { INDONESIAN_REGIONS, INITIAL_CATEGORIES, INITIAL_PROVIDERS, getDistrictsForCity } from '../data/initialData';
 import {
   db,
   doc,
@@ -296,6 +296,33 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     } catch (err) {
       console.error(err);
       handleFirestoreError(err, OperationType.CREATE, 'providers');
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
+  // Seed sample verified providers into Firestore
+  const handleSeedInitialProviders = async () => {
+    setLoadingAction(true);
+    try {
+      let count = 0;
+      for (const prov of INITIAL_PROVIDERS) {
+        const exists = providers.some((p) => p.name.toLowerCase() === prov.name.toLowerCase());
+        if (!exists) {
+          const { id: _, ...data } = prov;
+          await addDoc(collection(db, 'providers'), data);
+          count++;
+        }
+      }
+      setActionNotice(
+        count > 0
+          ? `${count} data mitra awal berhasil dimuat ke database Firestore!`
+          : 'Seluruh data mitra sampel sudah tersedia di database Firestore.'
+      );
+      onRefreshData();
+    } catch (err) {
+      console.error(err);
+      setActionNotice(`Gagal memuat data awal: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoadingAction(false);
     }
@@ -872,13 +899,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </p>
               </div>
 
-              <button
-                onClick={() => setIsManualModalOpen(true)}
-                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm shadow-blue-500/20"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Tambah Mitra Manual</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={loadingAction}
+                  onClick={handleSeedInitialProviders}
+                  className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-200"
+                  title="Muat 8 data tukang terverifikasi ke database Firestore"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingAction ? 'animate-spin' : ''}`} />
+                  <span>Muat Sampel Mitra ({INITIAL_PROVIDERS.length})</span>
+                </button>
+
+                <button
+                  onClick={() => setIsManualModalOpen(true)}
+                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm shadow-blue-500/20"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Tambah Mitra Manual</span>
+                </button>
+              </div>
             </div>
 
             {/* Filter controls */}

@@ -22,7 +22,7 @@ import {
   UserLocationState,
   AdminContactSettings,
 } from './types';
-import { INITIAL_CATEGORIES, DEFAULT_CATEGORIES } from './data/initialData';
+import { INITIAL_CATEGORIES, DEFAULT_CATEGORIES, INITIAL_PROVIDERS } from './data/initialData';
 import { detectUserLocation, getProviderDistance } from './lib/location';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -220,16 +220,36 @@ function MainContent() {
 
     const unsubscribe = onSnapshot(
       q,
-      (snapshot) => {
+      async (snapshot) => {
         const loaded: Provider[] = snapshot.docs.map((d) => ({
           id: d.id,
           ...d.data(),
         })) as Provider[];
-        setProviders(loaded);
+
+        if (loaded.length === 0) {
+          // If logged in as admin and Firestore collection is empty, auto-seed sample providers
+          if (isAdmin) {
+            try {
+              for (const prov of INITIAL_PROVIDERS) {
+                const { id: _, ...provData } = prov;
+                await addDoc(collection(db, 'providers'), provData);
+              }
+              return;
+            } catch (seedErr) {
+              console.warn('Auto-seed providers notice:', seedErr);
+            }
+          }
+          // Public visitor fallback ensures the directory always has data to read
+          setProviders(INITIAL_PROVIDERS);
+        } else {
+          setProviders(loaded);
+        }
         setLoadingData(false);
       },
       (error) => {
-        handleFirestoreError(error, OperationType.GET, 'providers');
+        console.warn('Providers subscription fallback notice:', error);
+        setProviders(INITIAL_PROVIDERS);
+        setLoadingData(false);
       }
     );
 

@@ -60,13 +60,15 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // Providers
-    match /providers/{providerId} {
-      allow get: if resource.data.status == 'approved' || (
-        isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin())
-      );
+    // Admin Settings (WhatsApp & Facebook contacts)
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
 
-      allow list: if resource.data.status == 'approved' || (
+    // Providers Directory
+    match /providers/{providerId} {
+      allow read: if resource.data.status == 'approved' || (
         isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin())
       );
 
@@ -77,7 +79,7 @@ service cloud.firestore {
 
       allow update: if (
         isAdmin() ||
-        // Metric counters (views & whatsapp contact clicks)
+        // Metric counters (views & whatsapp contact clicks by visitors)
         (incoming().diff(existing()).affectedKeys().hasOnly(['viewsCount', 'whatsappClicks'])) ||
         // Provider owner update (cannot self-approve)
         (
