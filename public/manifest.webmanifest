@@ -1,0 +1,19 @@
+{
+  "name": "JasaDekat - Jasa Perbaikan Rumah",
+  "short_name": "JasaDekat",
+  "description": "Temukan tukang dan teknisi perbaikan rumah terdekat dengan kontak langsung WhatsApp",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#1e3a8a",
+  "categories": ["lifestyle", "business", "utilities"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

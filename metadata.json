@@ -1,0 +1,6 @@
+{
+  "name": "JasaDekat",
+  "description": "Marketplace Jasa Perbaikan Rumah Terpercaya - Temukan teknisi dan tukang terdekat di wilayah Anda dengan kontak langsung WhatsApp.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

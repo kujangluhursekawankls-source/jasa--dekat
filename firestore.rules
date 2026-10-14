@@ -1,0 +1,94 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Catch-All Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'jamhur48229@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Connection testing doc
+    match /test/{docId} {
+      allow get: if true;
+    }
+
+    // Admin whitelist
+    match /admins/{adminId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // User accounts
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && request.auth.uid == userId && (
+        incoming().role == 'provider' || isAdmin()
+      );
+      allow update: if isSignedIn() && (
+        isAdmin() || (request.auth.uid == userId && !incoming().diff(existing()).affectedKeys().hasAny(['role']))
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Categories
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Providers
+    match /providers/{providerId} {
+      allow get: if resource.data.status == 'approved' || (
+        isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin())
+      );
+
+      allow list: if resource.data.status == 'approved' || (
+        isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin())
+      );
+
+      allow create: if (
+        (isSignedIn() && incoming().userId == request.auth.uid && incoming().status == 'pending') ||
+        isAdmin()
+      );
+
+      allow update: if (
+        isAdmin() ||
+        // Metric counters (views & whatsapp contact clicks)
+        (incoming().diff(existing()).affectedKeys().hasOnly(['viewsCount', 'whatsappClicks'])) ||
+        // Provider owner update (cannot self-approve)
+        (
+          isSignedIn() &&
+          resource.data.userId == request.auth.uid &&
+          incoming().userId == resource.data.userId &&
+          (!incoming().diff(existing()).affectedKeys().hasAny(['status']) || incoming().status == 'pending')
+        )
+      );
+
+      allow delete: if isAdmin();
+    }
+  }
+}

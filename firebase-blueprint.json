@@ -1,0 +1,104 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User account information and role mapping",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email", "description": "User email address" },
+        "role": { "type": "string", "enum": ["provider", "admin"], "description": "User role in application" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp created" }
+      },
+      "required": ["id", "email", "role", "createdAt"]
+    },
+    "Provider": {
+      "title": "Provider",
+      "description": "Home repair service technician or company profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Provider unique document ID" },
+        "userId": { "type": "string", "description": "Owner user UID or 'admin-manual' for manual entries" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 120, "description": "Technician or business name" },
+        "whatsapp": { "type": "string", "minLength": 9, "maxLength": 20, "pattern": "^[0-9+ ]+$", "description": "WhatsApp contact number" },
+        "categoryId": { "type": "string", "description": "Primary service category identifier" },
+        "categoryName": { "type": "string", "description": "Service category name" },
+        "subServices": { "type": "array", "description": "List of specific services offered" },
+        "province": { "type": "string", "description": "Service area province" },
+        "city": { "type": "string", "description": "Service area city or regency" },
+        "districts": { "type": "array", "description": "List of service subdistricts or coverage areas" },
+        "description": { "type": "string", "maxLength": 2000, "description": "Experience and service description" },
+        "priceRange": { "type": "string", "maxLength": 100, "description": "Estimated starting price or price range" },
+        "photoUrl": { "type": "string", "description": "Profile or business avatar image" },
+        "gallery": { "type": "array", "description": "Portfolio work photos" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "disabled"], "description": "Moderation status" },
+        "rejectionReason": { "type": "string", "description": "Reason given if rejected by admin" },
+        "manualEntry": { "type": "boolean", "description": "Whether registered manually by admin with consent" },
+        "viewsCount": { "type": "number", "description": "Total view impressions count" },
+        "whatsappClicks": { "type": "number", "description": "Total WhatsApp contact clicks count" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
+      },
+      "required": ["name", "whatsapp", "categoryId", "province", "city", "status", "createdAt"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Repair service category definition",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Category document ID" },
+        "name": { "type": "string", "maxLength": 100, "description": "Category display name" },
+        "icon": { "type": "string", "maxLength": 50, "description": "Lucide icon identifier name" },
+        "description": { "type": "string", "maxLength": 250, "description": "Category description" },
+        "order": { "type": "number", "description": "Display order" },
+        "active": { "type": "boolean", "description": "Whether category is active" }
+      },
+      "required": ["name", "icon", "active"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Admin identity whitelist record",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Admin UID" },
+        "email": { "type": "string", "description": "Admin email" },
+        "role": { "type": "string", "enum": ["admin"], "description": "Admin role" },
+        "createdAt": { "type": "string", "description": "Added timestamp" }
+      },
+      "required": ["uid", "email"]
+    },
+    "AdminSettings": {
+      "title": "AdminSettings",
+      "description": "App settings including admin contact info for WhatsApp and Facebook",
+      "type": "object",
+      "properties": {
+        "adminWhatsapp": { "type": "string", "description": "Admin WhatsApp confirmation number" },
+        "adminFacebook": { "type": "string", "description": "Admin Facebook page or profile URL" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "User" },
+      "description": "User profiles and credentials metadata"
+    },
+    "/providers/{providerId}": {
+      "schema": { "$ref": "Provider" },
+      "description": "Directory of home repair technicians and service providers"
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "Category" },
+      "description": "Service categories available in the marketplace"
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "Admin" },
+      "description": "Authorized administrator user accounts"
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "AdminSettings" },
+      "description": "Public contact settings managed by admin"
+    }
+  }
+}
