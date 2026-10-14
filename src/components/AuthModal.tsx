@@ -32,6 +32,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       if (err instanceof Error) {
         if (err.message.includes('user-not-found') || err.message.includes('wrong-password') || err.message.includes('invalid-credential')) {
           setErrorMessage('Email atau kata sandi tidak cocok. Silakan periksa kembali.');
+        } else if (err.message.includes('unauthorized-domain')) {
+          setErrorMessage('Domain belum diotorisasi di Firebase. Tambahkan domain "jasa-dekat.vercel.app" di Firebase Console > Authentication > Settings > Authorized domains.');
+        } else if (err.message.includes('operation-not-allowed')) {
+          setErrorMessage('Metode login Email/Password belum diaktifkan di Firebase Console > Authentication > Sign-in method.');
         } else {
           setErrorMessage(err.message);
         }
@@ -53,7 +57,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     } catch (err: unknown) {
       console.error(err);
       if (err instanceof Error) {
-        setErrorMessage(err.message);
+        if (err.message.includes('unauthorized-domain')) {
+          setErrorMessage('Domain belum diizinkan di Firebase: Tambahkan "jasa-dekat.vercel.app" di Firebase Console > Authentication > Settings > Authorized domains.');
+        } else if (err.message.includes('popup-closed-by-user')) {
+          setErrorMessage('Jendela login Google ditutup sebelum selesai.');
+        } else if (err.message.includes('operation-not-allowed')) {
+          setErrorMessage('Metode Google Sign-in belum diaktifkan di Firebase Console > Authentication > Sign-in method.');
+        } else {
+          setErrorMessage(err.message);
+        }
       }
     } finally {
       setLoading(false);
