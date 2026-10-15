@@ -25,7 +25,7 @@ import {
   Phone,
   Globe,
 } from 'lucide-react';
-import { INDONESIAN_REGIONS, INITIAL_CATEGORIES, INITIAL_PROVIDERS, getDistrictsForCity } from '../data/initialData';
+import { INDONESIAN_REGIONS, INITIAL_CATEGORIES, getDistrictsForCity, isDefaultSampleProvider } from '../data/initialData';
 import {
   db,
   doc,
@@ -301,28 +301,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  // Seed sample verified providers into Firestore
-  const handleSeedInitialProviders = async () => {
+  // Delete all default / sample providers from Firestore
+  const handleDeleteDefaultProviders = async () => {
     setLoadingAction(true);
     try {
       let count = 0;
-      for (const prov of INITIAL_PROVIDERS) {
-        const exists = providers.some((p) => p.name.toLowerCase() === prov.name.toLowerCase());
-        if (!exists) {
-          const { id: _, ...data } = prov;
-          await addDoc(collection(db, 'providers'), data);
+      for (const prov of providers) {
+        if (isDefaultSampleProvider(prov)) {
+          await deleteDoc(doc(db, 'providers', prov.id));
           count++;
         }
       }
       setActionNotice(
         count > 0
-          ? `${count} data mitra awal berhasil dimuat ke database Firestore!`
-          : 'Seluruh data mitra sampel sudah tersedia di database Firestore.'
+          ? `${count} data tukang default/sampel berhasil dihapus permanen dari Firestore!`
+          : 'Database Firestore sudah bersih, tidak ditemukan data tukang default.'
       );
       onRefreshData();
     } catch (err) {
       console.error(err);
-      setActionNotice(`Gagal memuat data awal: ${err instanceof Error ? err.message : String(err)}`);
+      setActionNotice(`Gagal menghapus tukang default: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoadingAction(false);
     }
@@ -900,16 +898,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  disabled={loadingAction}
-                  onClick={handleSeedInitialProviders}
-                  className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-200"
-                  title="Muat 8 data tukang terverifikasi ke database Firestore"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${loadingAction ? 'animate-spin' : ''}`} />
-                  <span>Muat Sampel Mitra ({INITIAL_PROVIDERS.length})</span>
-                </button>
+                {providers.filter(isDefaultSampleProvider).length > 0 ? (
+                  <button
+                    type="button"
+                    disabled={loadingAction}
+                    onClick={handleDeleteDefaultProviders}
+                    className="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors border border-rose-200 shadow-sm"
+                    title="Hapus seluruh data tukang default / sampel dari Firestore"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Hapus Tukang Default ({providers.filter(isDefaultSampleProvider).length})</span>
+                  </button>
+                ) : (
+                  <div className="px-3 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-medium flex items-center gap-1.5 border border-emerald-200">
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Data Bersih (Tanpa Tukang Default)</span>
+                  </div>
+                )}
 
                 <button
                   onClick={() => setIsManualModalOpen(true)}

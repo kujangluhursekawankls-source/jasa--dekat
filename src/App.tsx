@@ -7,6 +7,7 @@ import {
   getDocs,
   addDoc,
   doc,
+  deleteDoc,
 } from 'firebase/firestore';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import {
@@ -22,7 +23,12 @@ import {
   UserLocationState,
   AdminContactSettings,
 } from './types';
-import { INITIAL_CATEGORIES, DEFAULT_CATEGORIES, INITIAL_PROVIDERS } from './data/initialData';
+import {
+  INITIAL_CATEGORIES,
+  DEFAULT_CATEGORIES,
+  INITIAL_PROVIDERS,
+  isDefaultSampleProvider,
+} from './data/initialData';
 import { detectUserLocation, getProviderDistance } from './lib/location';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -224,34 +230,32 @@ function MainContent() {
     const unsubscribe = onSnapshot(
       q,
       async (snapshot) => {
-        const loaded: Provider[] = snapshot.docs.map((d) => ({
+        const rawLoaded: Provider[] = snapshot.docs.map((d) => ({
           id: d.id,
           ...d.data(),
         })) as Provider[];
 
-        if (loaded.length === 0) {
-          // If logged in as admin and Firestore collection is empty, auto-seed sample providers
-          if (isAdmin) {
+        // If logged in as admin, automatically delete any legacy default/seed providers from Firestore
+        const defaultDocs = rawLoaded.filter((p) => isDefaultSampleProvider(p));
+        if (isAdmin && defaultDocs.length > 0) {
+          for (const dp of defaultDocs) {
             try {
-              for (const prov of INITIAL_PROVIDERS) {
-                const { id: _, ...provData } = prov;
-                await addDoc(collection(db, 'providers'), provData);
-              }
-              return;
-            } catch (seedErr) {
-              console.warn('Auto-seed providers notice:', seedErr);
+              await deleteDoc(doc(db, 'providers', dp.id));
+            } catch (err) {
+              console.warn('Auto cleanup default provider error:', err);
             }
           }
-          // Public visitor fallback ensures the directory always has data to read
-          setProviders(INITIAL_PROVIDERS);
-        } else {
-          setProviders(loaded);
         }
+
+        // Clean directory: filter out default sample providers so visitors and users never see mock tukang
+        const loaded = rawLoaded.filter((p) => !isDefaultSampleProvider(p));
+
+        setProviders(loaded);
         setLoadingData(false);
       },
       (error) => {
-        console.warn('Providers subscription fallback notice:', error);
-        setProviders(INITIAL_PROVIDERS);
+        console.warn('Providers subscription notice:', error);
+        setProviders([]);
         setLoadingData(false);
       }
     );
@@ -505,23 +509,30 @@ function MainContent() {
                       <HelpCircle className="w-8 h-8" />
                     </div>
                     <h3 className="text-base font-bold text-slate-900">
-                      Belum Ada Teknisi di Wilayah Tersebut
+                      {publicProviders.length === 0
+                        ? 'Belum Ada Tukang Terdaftar'
+                        : 'Belum Ada Teknisi di Wilayah Tersebut'}
                     </h3>
                     <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
-                      Tidak ada penyedia jasa yang cocok dengan filter atau lokasi Anda saat ini. Coba pilih provinsi atau kota lain, atau reset filter pencarian.
+                      {publicProviders.length === 0
+                        ? 'Direktori saat ini telah bersih dari data tukang default. Jadilah mitra pertama yang mendaftarkan layanan jasa Anda di JasaDekat!'
+                        : 'Tidak ada penyedia jasa yang cocok dengan filter atau lokasi Anda saat ini. Coba pilih provinsi atau kota lain, atau reset filter pencarian.'}
                     </p>
                     <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
-                      <button
-                        onClick={handleResetFilters}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold"
-                      >
-                        Tampilkan Semua Wilayah
-                      </button>
+                      {publicProviders.length > 0 && (
+                        <button
+                          onClick={handleResetFilters}
+                          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold"
+                        >
+                          Tampilkan Semua Wilayah
+                        </button>
+                      )}
                       <button
                         onClick={() => setIsRegisterModalOpen(true)}
-                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold"
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center justify-center gap-1.5"
                       >
-                        Daftar Sebagai Tukang Pertama
+                        <PlusCircle className="w-3.5 h-3.5" />
+                        <span>Daftar Sebagai Tukang Pertama</span>
                       </button>
                     </div>
                   </div>
