@@ -24,6 +24,9 @@ import {
   RotateCcw,
   Phone,
   Globe,
+  Users,
+  Tag,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { INDONESIAN_REGIONS, INITIAL_CATEGORIES, getDistrictsForCity, isDefaultSampleProvider } from '../data/initialData';
 import {
@@ -40,6 +43,33 @@ import {
 import { DynamicIcon } from './DynamicIcon';
 
 import { Category, Provider, ProviderStatus, AdminContactSettings } from '../types';
+
+export const POPULAR_CATEGORY_ICONS = [
+  { name: 'AirVent', label: 'AC' },
+  { name: 'Zap', label: 'Listrik' },
+  { name: 'Droplets', label: 'Ledeng' },
+  { name: 'Hammer', label: 'Bangunan' },
+  { name: 'ShieldAlert', label: 'Atap Bocor' },
+  { name: 'Paintbrush', label: 'Cat Rumah' },
+  { name: 'Gauge', label: 'Pompa Air' },
+  { name: 'DoorClosed', label: 'Pintu/Jendela' },
+  { name: 'Bug', label: 'Anti Hama' },
+  { name: 'Sparkles', label: 'Cleaning' },
+  { name: 'Truck', label: 'Jasa Angkut' },
+  { name: 'Sun', label: 'Solar Panel' },
+  { name: 'Wrench', label: 'Servis Umum' },
+  { name: 'Flame', label: 'Kompor' },
+  { name: 'Key', label: 'Ahli Kunci' },
+  { name: 'Tv', label: 'Elektronik' },
+  { name: 'Cpu', label: 'Komputer' },
+  { name: 'Fan', label: 'Kipas/Blower' },
+  { name: 'Scissors', label: 'Taman/Rumput' },
+  { name: 'ShieldCheck', label: 'CCTV' },
+  { name: 'Camera', label: 'Kamera' },
+  { name: 'Home', label: 'Rumah' },
+  { name: 'Box', label: 'Perkakas' },
+  { name: 'Car', label: 'Otomotif' },
+];
 
 interface AdminPanelProps {
   providers: Provider[];
@@ -101,11 +131,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Editing existing provider
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
 
-  // Category creation / edit
+  // Category creation state
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [categoryName, setCategoryName] = useState('');
   const [categoryIcon, setCategoryIcon] = useState('Wrench');
   const [categoryDesc, setCategoryDesc] = useState('');
+  const [categoryOrder, setCategoryOrder] = useState<number>(categories.length + 1);
+  const [categoryActive, setCategoryActive] = useState(true);
+
+  // Category Edit state
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editCatName, setEditCatName] = useState('');
+  const [editCatIcon, setEditCatIcon] = useState('Wrench');
+  const [editCatDesc, setEditCatDesc] = useState('');
+  const [editCatOrder, setEditCatOrder] = useState<number>(1);
+  const [editCatActive, setEditCatActive] = useState(true);
+
+  // Category Delete confirmation state
+  const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
+
+  // Category search & filter in tab
+  const [categorySearch, setCategorySearch] = useState('');
+  const [categoryStatusFilter, setCategoryStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   const [loadingAction, setLoadingAction] = useState(false);
   const [actionNotice, setActionNotice] = useState('');
@@ -326,7 +373,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  // Add new Category
+  // Open Create Category Modal
+  const handleOpenCreateCategory = () => {
+    setCategoryName('');
+    setCategoryIcon('Wrench');
+    setCategoryDesc('');
+    setCategoryOrder(categories.length + 1);
+    setCategoryActive(true);
+    setIsCategoryModalOpen(true);
+  };
+
+  // Add new Category to Firestore
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!categoryName.trim()) return;
@@ -336,11 +393,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         name: categoryName.trim(),
         icon: categoryIcon.trim() || 'Wrench',
         description: categoryDesc.trim(),
-        order: categories.length + 1,
-        active: true,
+        order: Number(categoryOrder) || categories.length + 1,
+        active: Boolean(categoryActive),
         createdAt: new Date().toISOString(),
       });
-      setActionNotice(`Kategori "${categoryName}" berhasil ditambahkan.`);
+      setActionNotice(`Kategori "${categoryName.trim()}" berhasil ditambahkan ke database.`);
       setIsCategoryModalOpen(false);
       setCategoryName('');
       setCategoryDesc('');
@@ -353,13 +410,90 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  // Open Edit Category Modal
+  const handleOpenEditCategory = (cat: Category) => {
+    setEditingCategory(cat);
+    setEditCatName(cat.name);
+    setEditCatIcon(cat.icon || 'Wrench');
+    setEditCatDesc(cat.description || '');
+    setEditCatOrder(cat.order ?? 1);
+    setEditCatActive(cat.active !== false);
+  };
+
+  // Update Category in Firestore and sync affected providers
+  const handleUpdateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCategory || !editCatName.trim()) return;
+    setLoadingAction(true);
+    try {
+      const trimmedName = editCatName.trim();
+      const catRef = doc(db, 'categories', editingCategory.id);
+      await updateDoc(catRef, {
+        name: trimmedName,
+        icon: editCatIcon.trim() || 'Wrench',
+        description: editCatDesc.trim(),
+        order: Number(editCatOrder) || 1,
+        active: Boolean(editCatActive),
+        updatedAt: new Date().toISOString(),
+      });
+
+      // Synchronize categoryName for any providers with this category
+      if (trimmedName !== editingCategory.name) {
+        const affectedProviders = providers.filter((p) => p.categoryId === editingCategory.id);
+        for (const prov of affectedProviders) {
+          try {
+            await updateDoc(doc(db, 'providers', prov.id), {
+              categoryName: trimmedName,
+              updatedAt: new Date().toISOString(),
+            });
+          } catch (pErr) {
+            console.warn('Update provider category name notice:', pErr);
+          }
+        }
+      }
+
+      setActionNotice(`Kategori "${trimmedName}" berhasil diperbarui.`);
+      setEditingCategory(null);
+      onRefreshData();
+    } catch (err) {
+      console.error(err);
+      handleFirestoreError(err, OperationType.UPDATE, `categories/${editingCategory.id}`);
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
+  // Open Delete Category confirmation
+  const handleOpenDeleteCategory = (cat: Category) => {
+    setDeletingCategory(cat);
+  };
+
+  // Confirm Delete Category from Firestore
+  const handleConfirmDeleteCategory = async () => {
+    if (!deletingCategory) return;
+    setLoadingAction(true);
+    try {
+      await deleteDoc(doc(db, 'categories', deletingCategory.id));
+      setActionNotice(`Kategori "${deletingCategory.name}" berhasil dihapus.`);
+      setDeletingCategory(null);
+      onRefreshData();
+    } catch (err) {
+      console.error(err);
+      handleFirestoreError(err, OperationType.DELETE, `categories/${deletingCategory.id}`);
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
   // Toggle category active/inactive
   const handleToggleCategory = async (cat: Category) => {
     setLoadingAction(true);
     try {
       await updateDoc(doc(db, 'categories', cat.id), {
         active: !cat.active,
+        updatedAt: new Date().toISOString(),
       });
+      setActionNotice(`Kategori "${cat.name}" sekarang ${!cat.active ? 'Aktif' : 'Nonaktif'}.`);
       onRefreshData();
     } catch (err) {
       console.error(err);
@@ -383,6 +517,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
     return matchesSearch && matchesStatus && matchesCategory;
   });
+
+  // Filtered categories list for Categories tab
+  const filteredCategories = categories
+    .filter((cat) => {
+      const matchesSearch =
+        !categorySearch ||
+        cat.name.toLowerCase().includes(categorySearch.toLowerCase()) ||
+        cat.description?.toLowerCase().includes(categorySearch.toLowerCase()) ||
+        cat.icon.toLowerCase().includes(categorySearch.toLowerCase());
+
+      const matchesStatus =
+        categoryStatusFilter === 'all' ||
+        (categoryStatusFilter === 'active' && cat.active !== false) ||
+        (categoryStatusFilter === 'inactive' && cat.active === false);
+
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-16 animate-in fade-in">
@@ -1097,30 +1249,46 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* TAB 4: CATEGORIES MANAGEMENT */}
       {activeTab === 'categories' && (
         <div className="space-y-4">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-xs space-y-4">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-xs space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-base sm:text-lg font-bold text-slate-900">
-                  Kelola Kategori Jasa ({categories.length})
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Tambah, ubah, dan nonaktifkan kategori yang tampil pada aplikasi
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900">
+                    Kelola Kategori Jasa ({categories.length})
+                  </h2>
+                  <span className="text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200">
+                    {categories.filter((c) => c.active !== false).length} Aktif
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Tambah kategori baru, edit nama/ikon/urutan, hapus kategori, dan aktifkan atau nonaktifkan tampilan
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
-                {categories.length === 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                {categories.length === 0 ? (
                   <button
                     onClick={handleSeedCategories}
                     disabled={loadingAction}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors"
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
                   >
-                    Muat 12 Kategori Awal
+                    <Plus className="w-4 h-4" />
+                    <span>Muat 12 Kategori Bawaan</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSeedCategories}
+                    disabled={loadingAction}
+                    title="Tambah kembali 12 kategori standar jika ada yang terhapus"
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Pulihkan 12 Kategori Bawaan</span>
                   </button>
                 )}
                 <button
-                  onClick={() => setIsCategoryModalOpen(true)}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+                  onClick={handleOpenCreateCategory}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Tambah Kategori Baru</span>
@@ -1128,44 +1296,189 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {categories.map((cat) => (
-                <div
-                  key={cat.id}
-                  className={`p-4 rounded-2xl border transition-all flex items-start justify-between gap-3 ${
-                    cat.active !== false
-                      ? 'bg-white border-slate-200'
-                      : 'bg-slate-50 border-slate-200 opacity-60'
+            {/* Search and Status Filters */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-slate-100">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={categorySearch}
+                  onChange={(e) => setCategorySearch(e.target.value)}
+                  placeholder="Cari kategori berdasarkan nama, ikon, atau deskripsi..."
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                />
+                {categorySearch && (
+                  <button
+                    onClick={() => setCategorySearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs px-1"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl shrink-0 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setCategoryStatusFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    categoryStatusFilter === 'all'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                      <DynamicIcon name={cat.icon} className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-900 text-sm">{cat.name}</div>
-                      <div className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">
-                        {cat.description || 'Tidak ada deskripsi'}
-                      </div>
-                      <div className="text-[10px] text-slate-400 mt-1">
-                        Ikon: <span className="font-mono">{cat.icon}</span>
-                      </div>
-                    </div>
-                  </div>
+                  Semua ({categories.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCategoryStatusFilter('active')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    categoryStatusFilter === 'active'
+                      ? 'bg-white text-emerald-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Aktif ({categories.filter((c) => c.active !== false).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCategoryStatusFilter('inactive')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    categoryStatusFilter === 'inactive'
+                      ? 'bg-white text-slate-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Nonaktif ({categories.filter((c) => c.active === false).length})
+                </button>
+              </div>
+            </div>
 
+            {/* Category Cards Grid */}
+            {categories.length === 0 ? (
+              <div className="text-center py-12 px-4 border border-dashed border-slate-200 rounded-2xl space-y-3">
+                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto">
+                  <Tag className="w-6 h-6" />
+                </div>
+                <div className="font-bold text-slate-800 text-sm">Belum Ada Kategori di Database</div>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  Anda dapat memuat 12 kategori awal bawaan atau membuat kategori kustom pertama Anda.
+                </p>
+                <div className="flex items-center justify-center gap-2 pt-2">
                   <button
-                    onClick={() => handleToggleCategory(cat)}
-                    className={`px-2 py-1 rounded text-[10px] font-bold ${
-                      cat.active !== false
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-slate-200 text-slate-700'
-                    }`}
+                    onClick={handleSeedCategories}
+                    disabled={loadingAction}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold"
                   >
-                    {cat.active !== false ? 'Aktif' : 'Nonaktif'}
+                    Muat 12 Kategori Awal
+                  </button>
+                  <button
+                    onClick={handleOpenCreateCategory}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold"
+                  >
+                    Tambah Kategori Manual
                   </button>
                 </div>
-              ))}
-            </div>
+              </div>
+            ) : filteredCategories.length === 0 ? (
+              <div className="text-center py-10 px-4 border border-slate-200 rounded-2xl space-y-2 bg-slate-50">
+                <div className="text-sm font-bold text-slate-700">Tidak ada kategori yang cocok</div>
+                <p className="text-xs text-slate-500">
+                  Coba ubah kata kunci pencarian atau filter status yang dipilih.
+                </p>
+                <button
+                  onClick={() => {
+                    setCategorySearch('');
+                    setCategoryStatusFilter('all');
+                  }}
+                  className="px-3 py-1.5 text-xs text-blue-600 font-bold hover:underline"
+                >
+                  Reset Filter
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                {filteredCategories.map((cat) => {
+                  const linkedCount = providers.filter((p) => p.categoryId === cat.id).length;
+                  return (
+                    <div
+                      key={cat.id}
+                      className={`p-4 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${
+                        cat.active !== false
+                          ? 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs hover:shadow-xs'
+                          : 'bg-slate-50/80 border-slate-200 opacity-75'
+                      }`}
+                    >
+                      {/* Top Header of Card */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200">
+                            Urutan #{cat.order ?? 1}
+                          </span>
+                          <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                            <Users className="w-3 h-3 text-blue-500" />
+                            <span>{linkedCount} Tukang</span>
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleToggleCategory(cat)}
+                          title="Klik untuk ubah status aktif/nonaktif"
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors ${
+                            cat.active !== false
+                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                              : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                          }`}
+                        >
+                          {cat.active !== false ? '● Aktif' : '○ Nonaktif'}
+                        </button>
+                      </div>
+
+                      {/* Main Info */}
+                      <div className="flex items-start gap-3">
+                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0 shadow-2xs">
+                          <DynamicIcon name={cat.icon} className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-extrabold text-slate-900 text-sm truncate" title={cat.name}>
+                            {cat.name}
+                          </div>
+                          <div className="text-[11px] text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">
+                            {cat.description || 'Tidak ada deskripsi'}
+                          </div>
+                          <div className="text-[10px] text-slate-400 mt-1 font-mono">
+                            Ikon: <span className="text-slate-600 bg-slate-100 px-1 py-0.5 rounded">{cat.icon}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons: Edit and Delete */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditCategory(cat)}
+                          className="flex-1 py-1.5 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDeleteCategory(cat)}
+                          title="Hapus Kategori"
+                          className="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Hapus</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1748,17 +2061,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
 
-      {/* MODAL: Create Category */}
+      {/* MODAL 1: Create Category */}
       {isCategoryModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl border border-slate-200 space-y-4">
-            <h3 className="text-base font-bold text-slate-900">
-              Tambah Kategori Jasa Baru
-            </h3>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Tambah Kategori Jasa Baru</h3>
+                  <p className="text-xs text-slate-500">Kategori akan langsung tampil pada pilihan jasa</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCategoryModalOpen(false)}
+                className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
 
-            <form onSubmit={handleCreateCategory} className="space-y-3">
+            <form onSubmit={handleCreateCategory} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
                   Nama Kategori <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -1766,38 +2094,94 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   required
                   value={categoryName}
                   onChange={(e) => setCategoryName(e.target.value)}
-                  placeholder="Contoh: Service Mesin Cuci"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none"
+                  placeholder="Contoh: Service Elektronik & TV"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 />
               </div>
 
+              {/* Icon selector with preview */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Nama Ikon Lucide
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Pilih / Tulis Ikon Lucide
                 </label>
-                <input
-                  type="text"
-                  value={categoryIcon}
-                  onChange={(e) => setCategoryIcon(e.target.value)}
-                  placeholder="Wrench, Zap, Tv, Paintbrush, etc."
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none"
-                />
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0 shadow-2xs">
+                    <DynamicIcon name={categoryIcon} className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <input
+                    type="text"
+                    value={categoryIcon}
+                    onChange={(e) => setCategoryIcon(e.target.value)}
+                    placeholder="Nama ikon Lucide (misal: AirVent, Zap, Wrench)..."
+                    className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
+                  />
+                </div>
+
+                <div className="text-[11px] font-semibold text-slate-500 mb-1.5">Pilihan Ikon Populer (Klik untuk memilih):</div>
+                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-200/80">
+                  {POPULAR_CATEGORY_ICONS.map((item) => (
+                    <button
+                      key={item.name}
+                      type="button"
+                      onClick={() => setCategoryIcon(item.name)}
+                      className={`px-2 py-1 rounded-lg text-[10px] font-medium flex items-center gap-1 transition-all ${
+                        categoryIcon === item.name
+                          ? 'bg-blue-600 text-white shadow-2xs'
+                          : 'bg-white text-slate-700 border border-slate-200 hover:border-blue-300'
+                      }`}
+                    >
+                      <DynamicIcon name={item.name} className="w-3.5 h-3.5" />
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Urutan Tampilan
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={categoryOrder}
+                    onChange={(e) => setCategoryOrder(parseInt(e.target.value) || 1)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-0.5">Nomor urut posisi di daftar (1, 2, 3...)</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Status Awal
+                  </label>
+                  <label className="flex items-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={categoryActive}
+                      onChange={(e) => setCategoryActive(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                    />
+                    <span className="text-xs font-medium text-slate-700">Langsung Aktifkan</span>
+                  </label>
+                </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
                   Deskripsi Kategori
                 </label>
                 <textarea
                   rows={2}
                   value={categoryDesc}
                   onChange={(e) => setCategoryDesc(e.target.value)}
-                  placeholder="Keterangan singkat cakupan perbaikan..."
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none"
+                  placeholder="Keterangan singkat cakupan perbaikan atau jasa yang ditawarkan..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsCategoryModalOpen(false)}
@@ -1808,12 +2192,244 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <button
                   type="submit"
                   disabled={loadingAction}
-                  className="px-5 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
                 >
-                  Simpan Kategori
+                  {loadingAction ? 'Menyimpan...' : 'Simpan Kategori Baru'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: Edit Category */}
+      {editingCategory && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Edit className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Edit Kategori: &ldquo;{editingCategory.name}&rdquo;
+                  </h3>
+                  <p className="text-xs text-slate-500">Ubah nama, ikon, deskripsi, atau urutan kategori</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingCategory(null)}
+                className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateCategory} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Nama Kategori <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editCatName}
+                  onChange={(e) => setEditCatName(e.target.value)}
+                  placeholder="Contoh: Service AC"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-semibold"
+                />
+              </div>
+
+              {/* Icon selector with preview */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Pilih / Tulis Ikon Lucide
+                </label>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0 shadow-2xs">
+                    <DynamicIcon name={editCatIcon} className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <input
+                    type="text"
+                    value={editCatIcon}
+                    onChange={(e) => setEditCatIcon(e.target.value)}
+                    placeholder="Nama ikon Lucide (misal: AirVent, Zap, Wrench)..."
+                    className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
+                  />
+                </div>
+
+                <div className="text-[11px] font-semibold text-slate-500 mb-1.5">Pilihan Ikon Populer (Klik untuk memilih):</div>
+                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-200/80">
+                  {POPULAR_CATEGORY_ICONS.map((item) => (
+                    <button
+                      key={item.name}
+                      type="button"
+                      onClick={() => setEditCatIcon(item.name)}
+                      className={`px-2 py-1 rounded-lg text-[10px] font-medium flex items-center gap-1 transition-all ${
+                        editCatIcon === item.name
+                          ? 'bg-blue-600 text-white shadow-2xs'
+                          : 'bg-white text-slate-700 border border-slate-200 hover:border-blue-300'
+                      }`}
+                    >
+                      <DynamicIcon name={item.name} className="w-3.5 h-3.5" />
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Urutan Tampilan
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editCatOrder}
+                    onChange={(e) => setEditCatOrder(parseInt(e.target.value) || 1)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-0.5">Nomor urut posisi di daftar (1, 2, 3...)</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Status Tampilan
+                  </label>
+                  <label className="flex items-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editCatActive}
+                      onChange={(e) => setEditCatActive(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                    />
+                    <span className="text-xs font-medium text-slate-700">Aktif (Tampil di aplikasi)</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Deskripsi Kategori
+                </label>
+                <textarea
+                  rows={2}
+                  value={editCatDesc}
+                  onChange={(e) => setEditCatDesc(e.target.value)}
+                  placeholder="Keterangan singkat cakupan perbaikan..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                />
+              </div>
+
+              {/* Linked providers notice */}
+              {providers.filter((p) => p.categoryId === editingCategory.id).length > 0 && (
+                <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl flex items-start gap-2 text-xs text-blue-800">
+                  <Users className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    Ada{' '}
+                    <span className="font-bold">
+                      {providers.filter((p) => p.categoryId === editingCategory.id).length} mitra tukang
+                    </span>{' '}
+                    terdaftar dalam kategori ini. Menyimpan perubahan nama kategori akan otomatis menyinkronkan nama kategori di seluruh profil tukang tersebut.
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingCategory(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={loadingAction}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
+                >
+                  {loadingAction ? 'Menyimpan...' : 'Simpan Perubahan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: Delete Category Confirmation */}
+      {deletingCategory && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 my-8">
+            <div className="w-12 h-12 bg-rose-50 text-rose-600 border border-rose-200 rounded-2xl flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-bold text-slate-900">
+                Hapus Kategori &ldquo;{deletingCategory.name}&rdquo;?
+              </h3>
+              <p className="text-xs text-slate-500">
+                Tindakan ini akan menghapus dokumen kategori dari Firestore secara permanen.
+              </p>
+            </div>
+
+            {/* Provider linkage warning */}
+            {(() => {
+              const linked = providers.filter((p) => p.categoryId === deletingCategory.id);
+              if (linked.length > 0) {
+                return (
+                  <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl space-y-2 text-xs text-amber-900">
+                    <div className="font-bold flex items-center gap-1.5 text-amber-800">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>Perhatian: Kategori Sedang Digunakan</span>
+                    </div>
+                    <p>
+                      Terdapat <span className="font-bold">{linked.length} mitra tukang</span> yang saat ini terdaftar dengan kategori ini:
+                    </p>
+                    <ul className="list-disc list-inside text-[11px] text-amber-800/90 max-h-24 overflow-y-auto bg-amber-100/40 p-2 rounded-lg">
+                      {linked.slice(0, 5).map((p) => (
+                        <li key={p.id} className="truncate">
+                          {p.name} ({p.city})
+                        </li>
+                      ))}
+                      {linked.length > 5 && <li>...dan {linked.length - 5} mitra lainnya</li>}
+                    </ul>
+                    <p className="text-[11px] text-amber-700">
+                      Jika dihapus, profil tukang tetap aman, namun tidak akan muncul di filter kategori ini sampai Anda mengedit dan memilih kategori baru untuk mereka.
+                    </p>
+                  </div>
+                );
+              }
+              return (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-800 flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Kategori ini belum memiliki mitra tukang terdaftar. Aman untuk dihapus.</span>
+                </div>
+              );
+            })()}
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setDeletingCategory(null)}
+                disabled={loadingAction}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteCategory}
+                disabled={loadingAction}
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{loadingAction ? 'Menghapus...' : 'Ya, Hapus Kategori'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

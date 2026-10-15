@@ -175,46 +175,64 @@ function MainContent() {
     }
   }, []);
 
-  // 2. Fetch or seed Categories from Firestore
+  // 2. Real-time listener for Categories from Firestore
+  useEffect(() => {
+    let hasAttemptedSeed = false;
+    const categoriesRef = collection(db, 'categories');
+
+    const unsubscribe = onSnapshot(
+      categoriesRef,
+      async (snap) => {
+        if (snap.empty) {
+          // If logged in as admin and first boot where categories don't exist yet
+          const alreadySeededFlag = localStorage.getItem('jasadekat_categories_init_seeded');
+          if (isAdmin && !hasAttemptedSeed && !alreadySeededFlag) {
+            hasAttemptedSeed = true;
+            localStorage.setItem('jasadekat_categories_init_seeded', 'true');
+            try {
+              for (const c of INITIAL_CATEGORIES) {
+                await addDoc(collection(db, 'categories'), {
+                  ...c,
+                  createdAt: new Date().toISOString(),
+                });
+              }
+              return;
+            } catch (seedError) {
+              console.warn('Admin categories seed notice:', seedError);
+            }
+          }
+          setCategories(DEFAULT_CATEGORIES);
+        } else {
+          const loaded: Category[] = snap.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as Category[];
+          setCategories(loaded.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
+        }
+      },
+      (error) => {
+        console.warn('Loading fallback categories due to network or permission state:', error);
+        setCategories(DEFAULT_CATEGORIES);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [isAdmin]);
+
   const fetchCategories = async () => {
     try {
       const snap = await getDocs(collection(db, 'categories'));
-      if (snap.empty) {
-        // If logged in as admin, auto-seed into Firestore
-        if (isAdmin) {
-          try {
-            const seededList: Category[] = [];
-            for (const c of INITIAL_CATEGORIES) {
-              const docRef = await addDoc(collection(db, 'categories'), {
-                ...c,
-                createdAt: new Date().toISOString(),
-              });
-              seededList.push({ id: docRef.id, ...c });
-            }
-            setCategories(seededList.sort((a, b) => a.order - b.order));
-            return;
-          } catch (seedError) {
-            console.warn('Admin auto-seed notice:', seedError);
-          }
-        }
-        // Fallback for public visitors: display default categories without write attempt
-        setCategories(DEFAULT_CATEGORIES);
-      } else {
+      if (!snap.empty) {
         const loaded: Category[] = snap.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         })) as Category[];
-        setCategories(loaded.sort((a, b) => a.order - b.order));
+        setCategories(loaded.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
       }
-    } catch (error) {
-      console.warn('Loading fallback categories due to network or permission state:', error);
-      setCategories(DEFAULT_CATEGORIES);
+    } catch (err) {
+      console.warn('Manual fetch categories notice:', err);
     }
   };
-
-  useEffect(() => {
-    fetchCategories();
-  }, [isAdmin]);
 
   // 3. Real-time listener for Providers (Cloud Firestore)
   useEffect(() => {
