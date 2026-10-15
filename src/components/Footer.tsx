@@ -1,15 +1,15 @@
 import React from 'react';
-import { Heart, Shield, MessageCircle, Phone, Smartphone, Coffee } from 'lucide-react';
+import { Heart, Shield, MessageCircle, Phone, Smartphone, BookOpen } from 'lucide-react';
 
 interface FooterProps {
   onNavigate: (view: 'home' | 'categories' | 'register') => void;
   onOpenRegister: () => void;
-  onOpenBagiKopi?: () => void;
+  onOpenPanduan?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenRegister, onOpenBagiKopi }) => {
+export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenRegister, onOpenPanduan }) => {
   return (
-    <footer className="bg-slate-900 text-slate-400 border-t border-slate-800 text-xs">
+    <footer className="bg-slate-900 text-slate-400 border-t border-slate-800 text-xs pb-24 md:pb-0">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand & Purpose */}
@@ -67,14 +67,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenRegister, onOp
                   Daftar Sebagai Tukang
                 </button>
               </li>
-              {onOpenBagiKopi && (
+              {onOpenPanduan && (
                 <li>
                   <button
-                    onClick={onOpenBagiKopi}
-                    className="text-amber-400 hover:text-amber-300 font-medium transition-colors flex items-center gap-1.5"
+                    onClick={onOpenPanduan}
+                    className="text-blue-400 hover:text-blue-300 font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Coffee className="w-3.5 h-3.5" />
-                    <span>Bagi Kopi / Donasi (GoPay)</span>
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>Panduan Penggunaan</span>
                   </button>
                 </li>
               )}

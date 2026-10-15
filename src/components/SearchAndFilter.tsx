@@ -96,18 +96,20 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
             <Search className="w-5 h-5" />
           </div>
           <input
+            id="search-input-field"
             type="text"
             value={filters.searchQuery}
             onChange={(e) => onFilterChange({ ...filters, searchQuery: e.target.value })}
             placeholder="Cari tukang atau jasa (contoh: Service AC, tukang listrik, ledeng)..."
-            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all min-h-[48px]"
           />
           {filters.searchQuery && (
             <button
+              type="button"
               onClick={() => onFilterChange({ ...filters, searchQuery: '' })}
               className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           )}
         </div>
@@ -117,7 +119,7 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
           type="button"
           onClick={onDetectLocation}
           disabled={isDetectingLocation}
-          className={`px-4 py-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all shrink-0 shadow-xs ${
+          className={`px-4 py-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all shrink-0 shadow-xs min-h-[48px] ${
             userLocation
               ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
               : 'bg-blue-600 hover:bg-blue-500 text-white'
@@ -136,6 +138,42 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
             </>
           )}
         </button>
+      </div>
+
+      {/* Quick Category Chips for Mobile Android (Horizontal Touch Scroll) */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 text-xs select-none scrollbar-thin">
+        <button
+          type="button"
+          onClick={() => onFilterChange({ ...filters, categoryId: '' })}
+          className={`px-3.5 py-2 rounded-full whitespace-nowrap font-semibold transition-all shrink-0 cursor-pointer min-h-[36px] ${
+            !filters.categoryId
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          }`}
+        >
+          Semua Layanan
+        </button>
+        {categories
+          .filter((c) => c.active !== false)
+          .map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() =>
+                onFilterChange({
+                  ...filters,
+                  categoryId: filters.categoryId === cat.id ? '' : cat.id,
+                })
+              }
+              className={`px-3.5 py-2 rounded-full whitespace-nowrap font-medium transition-all shrink-0 flex items-center gap-1 cursor-pointer min-h-[36px] ${
+                filters.categoryId === cat.id
+                  ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <span>{cat.name}</span>
+            </button>
+          ))}
       </div>
 
       {/* Active Detected Location Banner */}
@@ -196,7 +234,7 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
             <select
               value={filters.categoryId}
               onChange={(e) => onFilterChange({ ...filters, categoryId: e.target.value })}
-              className="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none appearance-none"
+              className="w-full py-2.5 sm:py-3 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none appearance-none min-h-[46px]"
             >
               <option value="">Semua Kategori Jasa</option>
               {categories
@@ -207,8 +245,8 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
                   </option>
                 ))}
             </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
-              <Filter className="w-3.5 h-3.5" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+              <Filter className="w-4 h-4" />
             </div>
           </div>
         </div>
@@ -222,7 +260,7 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
             <select
               value={filters.province}
               onChange={handleProvinceChange}
-              className="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none appearance-none"
+              className="w-full py-2.5 sm:py-3 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none appearance-none min-h-[46px]"
             >
               <option value="">Semua Provinsi</option>
               {INDONESIAN_REGIONS.map((r) => (
@@ -231,8 +269,8 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
                 </option>
               ))}
             </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
-              <MapPin className="w-3.5 h-3.5" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+              <MapPin className="w-4 h-4" />
             </div>
           </div>
         </div>
@@ -246,7 +284,7 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
             <select
               value={filters.city}
               onChange={handleCityChange}
-              className="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none appearance-none"
+              className="w-full py-2.5 sm:py-3 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none appearance-none min-h-[46px]"
             >
               <option value="">
                 {filters.province ? `Semua Kota di ${filters.province}` : 'Semua Kota / Kabupaten'}
@@ -267,8 +305,8 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
                     </optgroup>
                   ))}
             </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
-              <MapPin className="w-3.5 h-3.5" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+              <MapPin className="w-4 h-4" />
             </div>
           </div>
         </div>
@@ -283,7 +321,7 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
               value={filters.district}
               onChange={(e) => onFilterChange({ ...filters, district: e.target.value })}
               disabled={!filters.city}
-              className={`w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none appearance-none ${
+              className={`w-full py-2.5 sm:py-3 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none appearance-none min-h-[46px] ${
                 !filters.city ? 'opacity-60 cursor-not-allowed text-slate-400' : ''
               }`}
             >
@@ -301,8 +339,8 @@ export const SearchAndFilter: React.FC<SearchAndFilterProps> = ({
                   </option>
                 ))}
             </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
-              <MapPin className="w-3.5 h-3.5" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
+              <MapPin className="w-4 h-4" />
             </div>
           </div>
         </div>

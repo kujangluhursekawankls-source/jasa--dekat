@@ -13,6 +13,7 @@ import {
   Layers,
   Sparkles,
   Coffee,
+  BookOpen,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -22,6 +23,8 @@ interface HeaderProps {
   onOpenLogin: () => void;
   onOpenRegister: () => void;
   onOpenBagiKopi: () => void;
+  onOpenPanduan?: () => void;
+  onOpenInstall?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -30,6 +33,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenLogin,
   onOpenRegister,
   onOpenBagiKopi,
+  onOpenPanduan,
+  onOpenInstall,
 }) => {
   const { currentUser, isAdmin, isProvider, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -54,6 +59,10 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   const handleInstallClick = async () => {
+    if (onOpenInstall) {
+      onOpenInstall();
+      return;
+    }
     if (!deferredPrompt) {
       alert('Untuk memasang JasaDekat di HP Android, buka menu browser (titik 3 di kanan atas) dan pilih "Tambahkan ke Layar Utama" atau "Install App".');
       return;
@@ -134,6 +143,17 @@ export const Header: React.FC<HeaderProps> = ({
               <PlusCircle className="w-4 h-4 text-emerald-400" />
               Daftar Sebagai Tukang
             </button>
+
+            {onOpenPanduan && (
+              <button
+                type="button"
+                onClick={onOpenPanduan}
+                className="px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 text-slate-300 hover:text-white hover:bg-slate-800 cursor-pointer"
+              >
+                <BookOpen className="w-4 h-4 text-blue-400" />
+                Panduan
+              </button>
+            )}
 
             {isProvider && (
               <button
@@ -304,6 +324,20 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <ShieldCheck className="w-4 h-4 text-purple-400" />
               Panel Admin & Moderasi
+            </button>
+          )}
+
+          {/* Panduan Mobile Drawer Button */}
+          {onOpenPanduan && (
+            <button
+              onClick={() => {
+                onOpenPanduan();
+                setMobileMenuOpen(false);
+              }}
+              className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2.5 text-blue-300 hover:bg-slate-800 cursor-pointer"
+            >
+              <BookOpen className="w-4 h-4 text-blue-400" />
+              Panduan Penggunaan JasaDekat
             </button>
           )}
 

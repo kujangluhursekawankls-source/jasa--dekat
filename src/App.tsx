@@ -41,6 +41,9 @@ import { AuthModal } from './components/AuthModal';
 import { ProviderDashboard } from './components/ProviderDashboard';
 import { AdminPanel } from './components/AdminPanel';
 import { BagiKopiModal } from './components/BagiKopiModal';
+import { MobileBottomNav } from './components/MobileBottomNav';
+import { PanduanModal } from './components/PanduanModal';
+import { InstallPromptModal } from './components/InstallPromptModal';
 import {
   Wrench,
   Search,
@@ -86,6 +89,8 @@ function MainContent() {
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isBagiKopiModalOpen, setIsBagiKopiModalOpen] = useState<boolean>(false);
+  const [isPanduanModalOpen, setIsPanduanModalOpen] = useState<boolean>(false);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState<boolean>(false);
 
   // Admin Contact Settings state (WA & FB)
   const [adminSettings, setAdminSettings] = useState<AdminContactSettings>({
@@ -348,6 +353,14 @@ function MainContent() {
     });
   };
 
+  const handleFocusSearch = () => {
+    const el = document.getElementById('search-input-field');
+    if (el) {
+      el.focus();
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col text-slate-800 font-sans selection:bg-blue-600 selection:text-white">
       {/* Header */}
@@ -357,10 +370,12 @@ function MainContent() {
         onOpenLogin={() => setIsAuthModalOpen(true)}
         onOpenRegister={() => setIsRegisterModalOpen(true)}
         onOpenBagiKopi={() => setIsBagiKopiModalOpen(true)}
+        onOpenPanduan={() => setIsPanduanModalOpen(true)}
+        onOpenInstall={() => setIsInstallModalOpen(true)}
       />
 
       {/* Main Content View Switcher */}
-      <main className="flex-1">
+      <main className="flex-1 pb-24 md:pb-8">
         {currentView === 'admin-panel' && isAdmin ? (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <AdminPanel
@@ -578,25 +593,18 @@ function MainContent() {
       <Footer
         onNavigate={setCurrentView}
         onOpenRegister={() => setIsRegisterModalOpen(true)}
-        onOpenBagiKopi={() => setIsBagiKopiModalOpen(true)}
+        onOpenPanduan={() => setIsPanduanModalOpen(true)}
       />
 
-      {/* Floating Bagi Kopi Button */}
-      <div className="fixed bottom-5 left-5 z-40">
-        <button
-          onClick={() => setIsBagiKopiModalOpen(true)}
-          title="Bagi Kopi / Dukung Operasional JasaDekat via GoPay"
-          className="flex items-center gap-2 px-3.5 py-2.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-bold rounded-full shadow-xl shadow-amber-950/25 border-2 border-white/60 hover:scale-105 active:scale-95 transition-all text-xs sm:text-sm group cursor-pointer"
-        >
-          <span className="p-1 rounded-full bg-slate-950 text-amber-400 group-hover:rotate-12 transition-transform shadow-xs">
-            <Coffee className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          </span>
-          <span className="font-extrabold tracking-tight">Bagi Kopi ☕</span>
-          <span className="hidden sm:inline-block text-[10px] bg-slate-950/20 text-slate-950 px-1.5 py-0.5 rounded-full font-mono font-bold">
-            GoPay
-          </span>
-        </button>
-      </div>
+      {/* Mobile Android Bottom Navigation Bar */}
+      <MobileBottomNav
+        currentView={currentView}
+        onNavigate={setCurrentView}
+        onOpenPanduan={() => setIsPanduanModalOpen(true)}
+        onOpenRegister={() => setIsRegisterModalOpen(true)}
+        onOpenLogin={() => setIsAuthModalOpen(true)}
+        onFocusSearch={handleFocusSearch}
+      />
 
       {/* Modals */}
       <ProviderDetailModal
@@ -625,6 +633,19 @@ function MainContent() {
         isOpen={isBagiKopiModalOpen}
         onClose={() => setIsBagiKopiModalOpen(false)}
         adminWhatsapp={adminSettings.adminWhatsapp || '08179015181'}
+      />
+
+      <PanduanModal
+        isOpen={isPanduanModalOpen}
+        onClose={() => setIsPanduanModalOpen(false)}
+        adminWhatsapp={adminSettings.adminWhatsapp || '08179015181'}
+        onOpenRegister={() => setIsRegisterModalOpen(true)}
+        onOpenInstall={() => setIsInstallModalOpen(true)}
+      />
+
+      <InstallPromptModal
+        isOpen={isInstallModalOpen}
+        onClose={() => setIsInstallModalOpen(false)}
       />
     </div>
   );

@@ -42,13 +42,21 @@ export const ProviderDetailModal: React.FC<ProviderDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
+    <div 
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in"
+      onClick={onClose}
+    >
       <div
-        className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden"
+        className="bg-white rounded-t-3xl sm:rounded-3xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Android Drag Handle Indicator */}
+        <div className="pt-2.5 pb-0.5 flex justify-center sm:hidden bg-slate-50/70">
+          <div className="w-12 h-1.5 rounded-full bg-slate-300" />
+        </div>
+
         {/* Header Bar */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+        <div className="p-3.5 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-800">
               {provider.categoryName}
@@ -59,8 +67,9 @@ export const ProviderDetailModal: React.FC<ProviderDetailModalProps> = ({
             </span>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors"
+            className="p-2 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -218,9 +227,9 @@ export const ProviderDetailModal: React.FC<ProviderDetailModalProps> = ({
         </div>
 
         {/* Modal Sticky Footer with Prominent WhatsApp Button */}
-        <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center gap-3">
+        <div className="p-3.5 sm:p-5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3 pb-[max(env(safe-area-inset-bottom,0px),14px)]">
           <div className="w-full sm:flex-1 text-center sm:text-left">
-            <div className="text-xs text-slate-500">Tanya ketersediaan & jadwal kunjungan:</div>
+            <div className="text-[11px] sm:text-xs text-slate-500">Tanya ketersediaan & jadwal kunjungan:</div>
             <div className="text-sm font-bold text-slate-800">{provider.name}</div>
           </div>
 
@@ -229,7 +238,7 @@ export const ProviderDetailModal: React.FC<ProviderDetailModalProps> = ({
             target="_blank"
             rel="noopener noreferrer"
             onClick={handleWhatsAppClick}
-            className="w-full sm:w-auto px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-600/30 group"
+            className="w-full sm:w-auto px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-600/30 group min-h-[48px] active:scale-[0.98]"
           >
             <MessageCircle className="w-5 h-5 fill-white group-hover:scale-110 transition-transform" />
             <span>Hubungi via WhatsApp</span>

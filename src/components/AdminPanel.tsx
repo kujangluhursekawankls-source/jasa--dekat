@@ -27,6 +27,9 @@ import {
   Users,
   Tag,
   SlidersHorizontal,
+  Upload,
+  Image as ImageIcon,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { INDONESIAN_REGIONS, INITIAL_CATEGORIES, getDistrictsForCity, isDefaultSampleProvider } from '../data/initialData';
 import {
@@ -43,6 +46,19 @@ import {
 import { DynamicIcon } from './DynamicIcon';
 
 import { Category, Provider, ProviderStatus, AdminContactSettings } from '../types';
+
+export const PRESET_CATEGORY_IMAGES = [
+  { name: 'Service AC', url: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=256&q=80' },
+  { name: 'Tukang Listrik', url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=256&q=80' },
+  { name: 'Ledeng & Pipa', url: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=256&q=80' },
+  { name: 'Tukang Bangunan', url: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=256&q=80' },
+  { name: 'Cat Rumah', url: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=256&q=80' },
+  { name: 'Pompa Air', url: 'https://images.unsplash.com/photo-1615859131861-052f0641a60e?auto=format&fit=crop&w=256&q=80' },
+  { name: 'Atap Bocor', url: 'https://images.unsplash.com/photo-1632759145351-1d592919f522?auto=format&fit=crop&w=256&q=80' },
+  { name: 'Elektronik & TV', url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=256&q=80' },
+  { name: 'Kebersihan', url: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=256&q=80' },
+  { name: 'Kunci & Pintu', url: 'https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=256&q=80' },
+];
 
 export const POPULAR_CATEGORY_ICONS = [
   { name: 'AirVent', label: 'AC' },
@@ -134,7 +150,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Category creation state
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [categoryName, setCategoryName] = useState('');
-  const [categoryIcon, setCategoryIcon] = useState('Wrench');
+  const [categoryIcon, setCategoryIcon] = useState('https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=256&q=80');
+  const [categoryImageMode, setCategoryImageMode] = useState<'upload' | 'url'>('upload');
   const [categoryDesc, setCategoryDesc] = useState('');
   const [categoryOrder, setCategoryOrder] = useState<number>(categories.length + 1);
   const [categoryActive, setCategoryActive] = useState(true);
@@ -142,10 +159,50 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Category Edit state
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editCatName, setEditCatName] = useState('');
-  const [editCatIcon, setEditCatIcon] = useState('Wrench');
+  const [editCatIcon, setEditCatIcon] = useState('');
+  const [editCatImageMode, setEditCatImageMode] = useState<'upload' | 'url'>('upload');
   const [editCatDesc, setEditCatDesc] = useState('');
   const [editCatOrder, setEditCatOrder] = useState<number>(1);
   const [editCatActive, setEditCatActive] = useState(true);
+
+  // Image upload and compress helper (<50KB WebP)
+  const handleImageFileChange = (file: File, callback: (dataUrl: string) => void) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 256;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/webp', 0.85);
+          callback(compressedDataUrl);
+        } else {
+          callback(e.target?.result as string);
+        }
+      };
+      img.onerror = () => {
+        callback(e.target?.result as string);
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Category Delete confirmation state
   const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
@@ -376,7 +433,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Open Create Category Modal
   const handleOpenCreateCategory = () => {
     setCategoryName('');
-    setCategoryIcon('Wrench');
+    setCategoryIcon('https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=256&q=80');
+    setCategoryImageMode('upload');
     setCategoryDesc('');
     setCategoryOrder(categories.length + 1);
     setCategoryActive(true);
@@ -391,7 +449,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       await addDoc(collection(db, 'categories'), {
         name: categoryName.trim(),
-        icon: categoryIcon.trim() || 'Wrench',
+        icon: categoryIcon.trim() || 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=256&q=80',
         description: categoryDesc.trim(),
         order: Number(categoryOrder) || categories.length + 1,
         active: Boolean(categoryActive),
@@ -414,7 +472,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleOpenEditCategory = (cat: Category) => {
     setEditingCategory(cat);
     setEditCatName(cat.name);
-    setEditCatIcon(cat.icon || 'Wrench');
+    setEditCatIcon(cat.icon || '');
+    setEditCatImageMode(cat.icon && (cat.icon.startsWith('data:image/') || !cat.icon.startsWith('http')) ? 'upload' : 'url');
     setEditCatDesc(cat.description || '');
     setEditCatOrder(cat.order ?? 1);
     setEditCatActive(cat.active !== false);
@@ -742,8 +801,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
 
-      {/* Tabs Navigation */}
-      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+      {/* Tabs Navigation (Horizontally scrollable on mobile Android) */}
+      <div className="flex items-center overflow-x-auto sm:flex-wrap gap-2 border-b border-slate-200 pb-3 select-none no-scrollbar">
         <button
           onClick={() => setActiveTab('analytics')}
           className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all ${
@@ -1437,8 +1496,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                       {/* Main Info */}
                       <div className="flex items-start gap-3">
-                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0 shadow-2xs">
-                          <DynamicIcon name={cat.icon} className="w-5 h-5 text-blue-600" />
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
+                          {cat.icon && (cat.icon.startsWith('http') || cat.icon.startsWith('data:image')) ? (
+                            <img src={cat.icon} alt={cat.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <DynamicIcon name={cat.icon} className="w-6 h-6 text-blue-600" />
+                          )}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="font-extrabold text-slate-900 text-sm truncate" title={cat.name}>
@@ -1447,8 +1510,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           <div className="text-[11px] text-slate-500 line-clamp-2 mt-0.5 leading-relaxed">
                             {cat.description || 'Tidak ada deskripsi'}
                           </div>
-                          <div className="text-[10px] text-slate-400 mt-1 font-mono">
-                            Ikon: <span className="text-slate-600 bg-slate-100 px-1 py-0.5 rounded">{cat.icon}</span>
+                          <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                            <span>Gambar:</span>
+                            {cat.icon?.startsWith('data:image') ? (
+                              <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-medium">Foto Upload</span>
+                            ) : cat.icon?.startsWith('http') ? (
+                              <span className="text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded font-medium truncate max-w-[120px]">URL Link</span>
+                            ) : (
+                              <span className="text-slate-600 bg-slate-100 px-1 py-0.5 rounded font-mono">{cat.icon || 'Ikon Bawaan'}</span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -2099,41 +2169,120 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 />
               </div>
 
-              {/* Icon selector with preview */}
+              {/* Gambar Kategori: Upload File atau URL */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Pilih / Tulis Ikon Lucide
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>Gambar Kategori <span className="text-red-500">*</span></span>
+                  <span className="text-[10px] font-normal text-slate-500">Upload file gambar atau URL</span>
                 </label>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0 shadow-2xs">
-                    <DynamicIcon name={categoryIcon} className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <input
-                    type="text"
-                    value={categoryIcon}
-                    onChange={(e) => setCategoryIcon(e.target.value)}
-                    placeholder="Nama ikon Lucide (misal: AirVent, Zap, Wrench)..."
-                    className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
-                  />
+
+                {/* Switcher Tab: Upload vs URL */}
+                <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 mb-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setCategoryImageMode('upload')}
+                    className={`py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      categoryImageMode === 'upload'
+                        ? 'bg-white text-blue-600 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload dari HP / PC</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCategoryImageMode('url')}
+                    className={`py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      categoryImageMode === 'url'
+                        ? 'bg-white text-blue-600 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <LinkIcon className="w-3.5 h-3.5" />
+                    <span>Pakai URL Gambar</span>
+                  </button>
                 </div>
 
-                <div className="text-[11px] font-semibold text-slate-500 mb-1.5">Pilihan Ikon Populer (Klik untuk memilih):</div>
-                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-200/80">
-                  {POPULAR_CATEGORY_ICONS.map((item) => (
-                    <button
-                      key={item.name}
-                      type="button"
-                      onClick={() => setCategoryIcon(item.name)}
-                      className={`px-2 py-1 rounded-lg text-[10px] font-medium flex items-center gap-1 transition-all ${
-                        categoryIcon === item.name
-                          ? 'bg-blue-600 text-white shadow-2xs'
-                          : 'bg-white text-slate-700 border border-slate-200 hover:border-blue-300'
-                      }`}
-                    >
-                      <DynamicIcon name={item.name} className="w-3.5 h-3.5" />
-                      <span>{item.label}</span>
-                    </button>
-                  ))}
+                {/* Preview Box & Input Area */}
+                <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                  <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 shadow-xs">
+                    {categoryIcon ? (
+                      categoryIcon.startsWith('data:image/') || categoryIcon.startsWith('http') ? (
+                        <img
+                          src={categoryIcon}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <DynamicIcon name={categoryIcon} className="w-7 h-7 text-blue-600" />
+                      )
+                    ) : (
+                      <ImageIcon className="w-6 h-6 text-slate-300" />
+                    )}
+                  </div>
+
+                  <div className="flex-1 space-y-2">
+                    {categoryImageMode === 'upload' ? (
+                      <div>
+                        <label className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold border border-blue-200 cursor-pointer transition-colors shadow-2xs">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Pilih Foto Gambar...</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleImageFileChange(file, (dataUrl) => setCategoryIcon(dataUrl));
+                              }
+                            }}
+                          />
+                        </label>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          Pilih foto dari galeri HP atau komputer. Otomatis dikompres & disimpan ke database.
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <input
+                          type="url"
+                          value={categoryIcon}
+                          onChange={(e) => setCategoryIcon(e.target.value)}
+                          placeholder="https://images.unsplash.com/... atau URL gambar"
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        />
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          Masukkan URL tautan gambar langsung dari web/CDN.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Preset Suggestions */}
+                <div className="mt-2.5">
+                  <div className="text-[11px] font-semibold text-slate-500 mb-1.5">
+                    Pilihan Contoh Gambar Layanan:
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-1 max-w-full">
+                    {PRESET_CATEGORY_IMAGES.map((preset) => (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        onClick={() => setCategoryIcon(preset.url)}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-medium shrink-0 transition-all cursor-pointer ${
+                          categoryIcon === preset.url
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-blue-300'
+                        }`}
+                      >
+                        <img src={preset.url} alt="" className="w-4 h-4 rounded-md object-cover" />
+                        <span>{preset.name}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -2242,41 +2391,120 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 />
               </div>
 
-              {/* Icon selector with preview */}
+              {/* Gambar Kategori: Upload File atau URL */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Pilih / Tulis Ikon Lucide
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>Gambar Kategori <span className="text-red-500">*</span></span>
+                  <span className="text-[10px] font-normal text-slate-500">Upload file gambar atau URL</span>
                 </label>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0 shadow-2xs">
-                    <DynamicIcon name={editCatIcon} className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <input
-                    type="text"
-                    value={editCatIcon}
-                    onChange={(e) => setEditCatIcon(e.target.value)}
-                    placeholder="Nama ikon Lucide (misal: AirVent, Zap, Wrench)..."
-                    className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
-                  />
+
+                {/* Switcher Tab: Upload vs URL */}
+                <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 mb-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setEditCatImageMode('upload')}
+                    className={`py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      editCatImageMode === 'upload'
+                        ? 'bg-white text-blue-600 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload dari HP / PC</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditCatImageMode('url')}
+                    className={`py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      editCatImageMode === 'url'
+                        ? 'bg-white text-blue-600 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <LinkIcon className="w-3.5 h-3.5" />
+                    <span>Pakai URL Gambar</span>
+                  </button>
                 </div>
 
-                <div className="text-[11px] font-semibold text-slate-500 mb-1.5">Pilihan Ikon Populer (Klik untuk memilih):</div>
-                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-200/80">
-                  {POPULAR_CATEGORY_ICONS.map((item) => (
-                    <button
-                      key={item.name}
-                      type="button"
-                      onClick={() => setEditCatIcon(item.name)}
-                      className={`px-2 py-1 rounded-lg text-[10px] font-medium flex items-center gap-1 transition-all ${
-                        editCatIcon === item.name
-                          ? 'bg-blue-600 text-white shadow-2xs'
-                          : 'bg-white text-slate-700 border border-slate-200 hover:border-blue-300'
-                      }`}
-                    >
-                      <DynamicIcon name={item.name} className="w-3.5 h-3.5" />
-                      <span>{item.label}</span>
-                    </button>
-                  ))}
+                {/* Preview Box & Input Area */}
+                <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                  <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 shadow-xs">
+                    {editCatIcon ? (
+                      editCatIcon.startsWith('data:image/') || editCatIcon.startsWith('http') ? (
+                        <img
+                          src={editCatIcon}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <DynamicIcon name={editCatIcon} className="w-7 h-7 text-blue-600" />
+                      )
+                    ) : (
+                      <ImageIcon className="w-6 h-6 text-slate-300" />
+                    )}
+                  </div>
+
+                  <div className="flex-1 space-y-2">
+                    {editCatImageMode === 'upload' ? (
+                      <div>
+                        <label className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold border border-blue-200 cursor-pointer transition-colors shadow-2xs">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Ganti Foto Gambar...</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleImageFileChange(file, (dataUrl) => setEditCatIcon(dataUrl));
+                              }
+                            }}
+                          />
+                        </label>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          Pilih foto dari galeri HP atau komputer. Otomatis dikompres & disimpan ke database.
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <input
+                          type="url"
+                          value={editCatIcon}
+                          onChange={(e) => setEditCatIcon(e.target.value)}
+                          placeholder="https://images.unsplash.com/... atau URL gambar"
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        />
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          Masukkan URL tautan gambar langsung dari web/CDN.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Preset Suggestions */}
+                <div className="mt-2.5">
+                  <div className="text-[11px] font-semibold text-slate-500 mb-1.5">
+                    Pilihan Contoh Gambar Layanan:
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-1 max-w-full">
+                    {PRESET_CATEGORY_IMAGES.map((preset) => (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        onClick={() => setEditCatIcon(preset.url)}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-medium shrink-0 transition-all cursor-pointer ${
+                          editCatIcon === preset.url
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-blue-300'
+                        }`}
+                      >
+                        <img src={preset.url} alt="" className="w-4 h-4 rounded-md object-cover" />
+                        <span>{preset.name}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
