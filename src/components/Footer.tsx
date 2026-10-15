@@ -1,21 +1,22 @@
 import React from 'react';
-import { Wrench, Heart, Shield, MessageCircle, Phone, Smartphone } from 'lucide-react';
+import { Heart, Shield, MessageCircle, Phone, Smartphone, Coffee } from 'lucide-react';
 
 interface FooterProps {
   onNavigate: (view: 'home' | 'categories' | 'register') => void;
   onOpenRegister: () => void;
+  onOpenBagiKopi?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenRegister }) => {
+export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenRegister, onOpenBagiKopi }) => {
   return (
     <footer className="bg-slate-900 text-slate-400 border-t border-slate-800 text-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand & Purpose */}
           <div className="space-y-3 md:col-span-2">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-emerald-500 flex items-center justify-center text-white">
-                <Wrench className="w-4 h-4" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl overflow-hidden bg-slate-950 ring-1 ring-white/10 flex items-center justify-center shadow-md shadow-blue-500/20">
+                <img src="/icon.svg" alt="JasaDekat" className="w-full h-full object-contain p-0.5" />
               </div>
               <span className="font-extrabold text-lg text-white tracking-tight">
                 Jasa<span className="text-emerald-400">Dekat</span>
@@ -66,6 +67,17 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenRegister }) =>
                   Daftar Sebagai Tukang
                 </button>
               </li>
+              {onOpenBagiKopi && (
+                <li>
+                  <button
+                    onClick={onOpenBagiKopi}
+                    className="text-amber-400 hover:text-amber-300 font-medium transition-colors flex items-center gap-1.5"
+                  >
+                    <Coffee className="w-3.5 h-3.5" />
+                    <span>Bagi Kopi / Donasi (GoPay)</span>
+                  </button>
+                </li>
+              )}
             </ul>
           </div>
 

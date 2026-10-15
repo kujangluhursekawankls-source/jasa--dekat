@@ -295,7 +295,7 @@ export const RegisterProviderModal: React.FC<RegisterProviderModalProps> = ({
                 </p>
                 <a
                   href={`https://wa.me/${normalizeWhatsAppNumber(
-                    adminSettings?.adminWhatsapp || '081289123456'
+                    adminSettings?.adminWhatsapp || '08179015181'
                   )}?text=${encodeURIComponent(
                     `Halo Admin JasaDekat, saya baru saja mendaftar sebagai mitra tukang/teknisi atas nama "${name}" untuk layanan "${
                       categories.find((c) => c.id === categoryId)?.name || 'Jasa Perbaikan'
@@ -348,7 +348,7 @@ export const RegisterProviderModal: React.FC<RegisterProviderModalProps> = ({
                 <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-amber-200/80">
                   <a
                     href={`https://wa.me/${normalizeWhatsAppNumber(
-                      adminSettings?.adminWhatsapp || '081289123456'
+                      adminSettings?.adminWhatsapp || '08179015181'
                     )}?text=${encodeURIComponent(
                       'Halo Admin JasaDekat, saya ingin mendaftar sebagai mitra teknisi/tukang di JasaDekat. Mohon informasi dan verifikasi pendaftaran saya.'
                     )}`}
@@ -357,7 +357,7 @@ export const RegisterProviderModal: React.FC<RegisterProviderModalProps> = ({
                     className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
                   >
                     <MessageCircle className="w-3.5 h-3.5 fill-white" />
-                    <span>WhatsApp Admin: {adminSettings?.adminWhatsapp || '081289123456'}</span>
+                    <span>WhatsApp Admin: {adminSettings?.adminWhatsapp || '08179015181'}</span>
                   </a>
 
                   {adminSettings?.adminFacebook && (

@@ -69,7 +69,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [providerToDelete, setProviderToDelete] = useState<Provider | null>(null);
 
   // Admin Contact Settings state
-  const [contactWhatsapp, setContactWhatsapp] = useState(adminSettings?.adminWhatsapp || '081289123456');
+  const [contactWhatsapp, setContactWhatsapp] = useState(adminSettings?.adminWhatsapp || '08179015181');
   const [contactFacebook, setContactFacebook] = useState(adminSettings?.adminFacebook || 'https://facebook.com/jasadekat');
   const [savingContact, setSavingContact] = useState(false);
 

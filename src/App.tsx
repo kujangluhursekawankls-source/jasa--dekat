@@ -34,6 +34,7 @@ import { RegisterProviderModal } from './components/RegisterProviderModal';
 import { AuthModal } from './components/AuthModal';
 import { ProviderDashboard } from './components/ProviderDashboard';
 import { AdminPanel } from './components/AdminPanel';
+import { BagiKopiModal } from './components/BagiKopiModal';
 import {
   Wrench,
   Search,
@@ -45,6 +46,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   Navigation,
+  Coffee,
 } from 'lucide-react';
 
 function MainContent() {
@@ -77,10 +79,11 @@ function MainContent() {
   const [selectedProviderForDetail, setSelectedProviderForDetail] = useState<Provider | null>(null);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [isBagiKopiModalOpen, setIsBagiKopiModalOpen] = useState<boolean>(false);
 
   // Admin Contact Settings state (WA & FB)
   const [adminSettings, setAdminSettings] = useState<AdminContactSettings>({
-    adminWhatsapp: '081289123456',
+    adminWhatsapp: '08179015181',
     adminFacebook: 'https://facebook.com/jasadekat',
   });
 
@@ -92,7 +95,7 @@ function MainContent() {
         if (snap.exists()) {
           const data = snap.data() as AdminContactSettings;
           setAdminSettings({
-            adminWhatsapp: data.adminWhatsapp || '081289123456',
+            adminWhatsapp: data.adminWhatsapp || '08179015181',
             adminFacebook: data.adminFacebook || 'https://facebook.com/jasadekat',
             updatedAt: data.updatedAt,
           });
@@ -331,6 +334,7 @@ function MainContent() {
         onNavigate={setCurrentView}
         onOpenLogin={() => setIsAuthModalOpen(true)}
         onOpenRegister={() => setIsRegisterModalOpen(true)}
+        onOpenBagiKopi={() => setIsBagiKopiModalOpen(true)}
       />
 
       {/* Main Content View Switcher */}
@@ -545,7 +549,25 @@ function MainContent() {
       <Footer
         onNavigate={setCurrentView}
         onOpenRegister={() => setIsRegisterModalOpen(true)}
+        onOpenBagiKopi={() => setIsBagiKopiModalOpen(true)}
       />
+
+      {/* Floating Bagi Kopi Button */}
+      <div className="fixed bottom-5 left-5 z-40">
+        <button
+          onClick={() => setIsBagiKopiModalOpen(true)}
+          title="Bagi Kopi / Dukung Operasional JasaDekat via GoPay"
+          className="flex items-center gap-2 px-3.5 py-2.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-bold rounded-full shadow-xl shadow-amber-950/25 border-2 border-white/60 hover:scale-105 active:scale-95 transition-all text-xs sm:text-sm group cursor-pointer"
+        >
+          <span className="p-1 rounded-full bg-slate-950 text-amber-400 group-hover:rotate-12 transition-transform shadow-xs">
+            <Coffee className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </span>
+          <span className="font-extrabold tracking-tight">Bagi Kopi ☕</span>
+          <span className="hidden sm:inline-block text-[10px] bg-slate-950/20 text-slate-950 px-1.5 py-0.5 rounded-full font-mono font-bold">
+            GoPay
+          </span>
+        </button>
+      </div>
 
       {/* Modals */}
       <ProviderDetailModal
@@ -568,6 +590,12 @@ function MainContent() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onSuccess={() => {}}
+      />
+
+      <BagiKopiModal
+        isOpen={isBagiKopiModalOpen}
+        onClose={() => setIsBagiKopiModalOpen(false)}
+        adminWhatsapp={adminSettings.adminWhatsapp || '08179015181'}
       />
     </div>
   );
